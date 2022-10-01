@@ -1,21 +1,12 @@
 #lang racket/base
 
 (require racket/cmdline racket/promise racket/list racket/file)
-(require "helpers.rkt" "backup.rkt" "macros.rkt"
-         "bak-file-structs.rkt" "bak-file-utils.rkt" "file-structs.rkt")
+(require "helpers.rkt" "backup-item.rkt" "macros.rkt" "backup-item-utils.rkt"
+         "spec-item.rkt" "backup.rkt")
 
 (provide (all-defined-out))
 
 ; --------------------------------------------------------------------------------
-
-(define (all #:encrypt? [encrypt? #f] #:follow? [follow? #t])
-  (list 'all encrypt? follow?))
-(define (is-all? x)
-  (and (list? x) (eq? 'all (car x))))
-(define (all-encrypt? an-all)
-  (true? (cadr an-all)))
-(define (all-follow? an-all)
-  (true? (caadr an-all)))
 
 ; Use this procedure to specify files to be included in a backup.
 ; Each one of `args` will have its path prefixed by `dir-path`.
@@ -32,36 +23,35 @@
 ; dir-path : string?
 ; encrypt? : boolean? ; encryption (global)
 ; follow?  : boolean? ; follow links (global)
+; excluded : (listof string?)
 ; args     : (listof bak-file? string? (listof ...))
 ; 
 ; -> (listof bak-file?)
-(define (in-dir dir-path #:encrypt? [encrypt? #f] #:follow? [follow? #t] 
-                #:excluded [excluded (list)] . args)
-  ; DEBUG
-  (displayln (format "in-dir ~a #:excluded ~a ~a" dir-path excluded args))
+;(define (in-dir dir-path #:encrypt? [encrypt? #f] #:follow? [follow? #t] 
+;                #:excluded [excluded (list)] . args)
+;  ; DEBUG
+;  ;(displayln (format "in-dir ~a #:excluded ~a ~a" dir-path excluded args))
+;
+;  (define (arg->bak-file arg)
+;    (cond [(string? arg) (+mk-bak-file (build-path dir-path arg))]
+;          [(bak-file? arg) (change-file-path arg (build-path dir-path (file-path arg)))]
+;          ; we expect this list to be (listof bak-file?)
+;          [(list? arg) (map (lambda (file)
+;                              (change-file-path file 
+;                                                (build-path dir-path (file-path file))))
+;                            bak-file)]
+;          [else (error "Unexpected arg: " arg)]))
+;
+;  ; to determine which files are included we have to check if (all ...) was specified or implied
+;  (if (or (and (!empty? excluded) (empty? args))
+;          (memf? is-all? args))
+;    ; TODO apply global encrypt? and follow?
+;    (included-bak-files excluded dir-path)
+;    (flatten (map arg->bak-file args))))
 
-  (define (arg->bak-file arg)
-    (cond [(string? arg) (+mk-bak-file (build-path dir-path arg))]
-          [(bak-file? arg) (change-file-path arg (build-path dir-path (file-path arg)))]
-          ; we expect this list to be (listof bak-file?)
-          [(list? arg) (map (lambda (file)
-                              (change-file-path file 
-                                                (build-path dir-path (file-path file))))
-                            bak-file)]
-          [else (error "Unexpected arg: " arg)]))
+(alias-proc file +SpecItemFile)
 
-  ; to determine which files are included we have to check if (all ...) was specified or implied
-  (if (or (and (!empty? excluded) (empty? args))
-          (memf? is-all? args))
-    ; TODO apply global encrypt? and follow?
-    (included-bak-files excluded dir-path)
-    (flatten (map arg->bak-file args))))
-
-; macro alias for creating bak-file
-(alias-proc file +mk-bak-file)
-
-; macro for creating stdout-file
-(alias-proc stdout mk-stdout-file)
+(alias-proc cmd +SpecItemCmd)
 
 ; >>>>>>>>>> COMMAND-LINE ARGUMENTS >>>>>>>>>>
 (define (options-from-cmdline)
@@ -120,12 +110,12 @@
                 ;#:date-format [date-format "%Y-%mm-%dd_%HH%MM%Ss"]
                 . args)
 
-  ; ->    (listof bak-file?)
-  (define (args->bak-file-list args)
+  ; -> (listof BackupItem?)
+  (define (args->backup-items args)
     (map (lambda (arg)
-           (cond [(string? arg) (+mk-bak-file arg)]
-                 [(bak-file? arg) arg]
-                 [else (error "Unexpected arg type:" arg)]))
+           (cond [(string? arg) (+BackupItemFile arg)]
+                 [(SpecItem? arg) (SpecItem->BackupItem arg)]
+                 [else (error "Unexpected argument type:" arg)]))
          args))
 
   (let* ([options (merge-options
@@ -141,16 +131,15 @@
     (when (and (get-option 'overwrite? options) (not (empty? args)))
       (delete-directory/files out-path #:must-exist? #f))
 
-    (let ([bak-files (args->bak-file-list args)])
+    (let ([backup-items (args->backup-items args)])
       ; handle some options
       (cond [(get-option 'print-files? options )
-             (print-included-files-paths bak-files)]
-            [(get-option 'simulate? options )
-             (simulate-backup out-path bak-files)]
+             (print-included backup-items)]
+            ;[(get-option 'simulate? options )
+            ; (simulate-backup out-path backup-items)]
             ; main call
-            [else (make-backup out-path (only-included-files bak-files))]))
+            [else (make-backup out-path backup-items)]))
     )
   )
-
 
 

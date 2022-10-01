@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require racket/path racket/string racket/date racket/list
-         racket/bool racket/port)
+         racket/bool racket/port racket/system)
 
 (provide (all-defined-out))
 
@@ -93,54 +93,24 @@
       (member x lst2))
     lst1))
 
-#|
-Runs a shell command cmd with arguments args.
-Returns stdout in case of success, otherwise #f.
+; Runs a shell command cmd. Returns stdout as string.
+;
+; cmd : string?
+; -> string?
+(define (run-cmd cmd)
+  (displayln (format "run-cmd ~s" cmd))
+  (with-output-to-string (lambda () (system cmd))))
 
-cmd : string?
-args : (listof string?)
--> (or string? #f)
-|#
-(define (run-cmd cmd args)
-  (displayln (format "run-cmd ~s ~s" cmd args))
-  (let-values ([(sp out in err)
-                (apply subprocess 
-                       (append 
-                         (list #;stdout #f #;stdin #f #;stderr #f 
-                               (find-executable-path cmd))
-                         args))])
-    (subprocess-wait sp)
-    (let ([result (string-trim (port->string out) 
-                               "\n" 
-                               #:left? #f)])
-      (apply-if-t close-input-port out)
-      (apply-if-t close-output-port in)
-      (apply-if-t close-input-port err)
-      result)))
-
-#|
-Runs a shell command cmd with arguments args and writes stdout to a file at path.
-Returns #f in case of success, otherwise #f.
-
-cmd : string?
-args : (listof string?)
-path : path-string?
--> boolean?
-|#
-(define (run-cmd->file cmd args path)
-  (let-values ([(sp out in err)
-                (apply subprocess 
-                       (append (list 
-                                 ;stdout 
-                                 (open-output-file path #:exists 'truncate/replace)
-                                 #;stdin #f #;stderr #f 
-                                 (find-executable-path cmd))
-                               args))])
-    (subprocess-wait sp)
-    (apply-if-t close-input-port out)
-    (apply-if-t close-output-port in)
-    (apply-if-t close-input-port err))
-  #t)
+; Runs a shell command cmd and writes stdout to a file at path.
+; Returns #t in case of success, otherwise #f.
+; 
+; cmd : string?
+; path : path-string?
+; -> boolean?
+(define (run-cmd->file cmd path)
+ (parameterize ([current-output-port 
+                (open-output-file path #:exists 'truncate/replace)])
+  (system cmd)))
 
 (define (path-string->string path-string)
   (cond [(string? path-string) path-string]
@@ -156,3 +126,6 @@ path : path-string?
 
 (define (!empty? lst)
  (not (empty? lst)))
+
+(define (maybe-string+suffix s suf)
+ (if (string-suffix? s suf) s (string-append s suf)))

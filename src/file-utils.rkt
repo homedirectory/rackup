@@ -1,11 +1,9 @@
 #lang racket/base
 
-(require racket/list racket/path racket/file)
-(require "helpers.rkt" "file-structs.rkt")
+(require racket/file racket/string racket/list)
+(require "helpers.rkt")
 
 (provide (all-defined-out))
-
-; --------------------------------------------------------------------------------
 
 ; Like explode-path, but if the 1st path element is "/",
 ; then join in with the 2nd one.
@@ -19,6 +17,26 @@
            (cons (build-path (car exploded) (cadr exploded))
                  (cddr exploded))]
           [else exploded])))
+
+(define (dirname path)
+  (apply build-path (drop-right (my-explode-path path) 1)))
+
+; path : string-path?
+; -> path?
+(define (encrypt-file path)
+  (let ([out-path (reroot-path path (find-system-path 'temp-dir))])
+    (make-directory* (dirname out-path))
+    (let ([out-path (make-temporary-file 
+                      (string-append (path->string out-path)
+                                     "_~a.enc"))])
+      (run-cmd (format "gpg -c -o ~a ~a" out-path path))
+      out-path)))
+
+(define (compress path)
+ (run-cmd (string-join (list "gzip"
+                        "--best" 
+                        (path-string->string path)))))
+
 
 ; Recursively list all files at `path` excluding those in `except-list`.
 ; Once `except-list` has been exhausted, does not go deeper into three,
@@ -76,69 +94,22 @@
             (list)
             (map my-explode-path except-list)))))
 
-#|
-Adds file to a tar archive at archive-path.
-Returns a bool indicating a successful outcome.
 
-archive-path : string-path?
-file : sfile?
--> bool?
-|#
-(define (tar-archive-file archive-path file #:follow? [follow? #t])
-  ;(displayln (format "tar-archive-file ~a ~a" archive-path (file-path file)))
-  (let ([options (format "-rP~a"
-                         (if follow? "h" ""))])
-    #| -r recursive
-    -P preserve absolute paths
-    -h dereference symlinks |#
-    (run-cmd "tar" (list options "-f" 
-                         (format "~a" 
-                                 (path-string->string archive-path))
-                         (format "~a" 
-                                 (path-string->string (file-path file)))))))
+(define (archive-file arch-path file-path #:prefix [prefix #f])
+  (let ([options (string-join (list "tar -rP"
+                                    (if prefix
+                                      (format "--transform=~a"
+                                              (format "s|\\(.*\\)|~s\\1|"
+                                                      prefix))
+                                      "")))])
+    (run-cmd (string-append "tar" options "-f"
+                            (format "~a" (path-string->string arch-path))
+                            (format "~a" (path-string->string file-path))))))
 
-#|
-file : file?
--> file?
-|#
-(define (encrypted-file file)
- ;(warn "encryption is not supported")
- #|
- (let* ([path (file-path file)]
-        [enc-path (path-add-extension path ".enc" ".")])
-  (with-handlers ([exn:fail (lambda (e) (#;warn display e) #f)])
-   (system (format "gpg -c -o ~s ~s" (path->string enc-path) (path->string path)))
-   (file enc-path)))
-|#
-    file
-    )
+(define (file-link? path)
+  (memq (file-or-directory-type path) (list 'link 'directory-link)))
 
-#|
-Compresses the file at path.
-Returns a bool indicating success of the operation.
-
-path : path-string?
--> bool?
-|#
-(define (compress path)
-  #f)
-
-#|
- file : file?
- -> file?
-|#
-;(define (compressed-file file)
-;  (let ([path (file-path file)])
-;    (with-handlers ([exn:fail (lambda (e) (warn e) #f)])
-;      (system (format "gzip -f ~s" (path->string path)))
-;      (file (path-add-extension path ".gz" ".")))))
-
-; returns physical size of a file in bytes
-; fil : file?
-; -> exact-integer?
-;(define (file-phys-size fil)
-;  (exact-ceiling 
-;    (string->number 
-;      (first 
-;        (string-split (run-cmd "du" "-bLs" (path->string (file-path fil)))))
-;      10)))
+(define (dereference link-path)
+  (if (not (or (file-exists? link-path) (directory-exists? link-path)))
+    #f
+    (resolve-path link-path)))
