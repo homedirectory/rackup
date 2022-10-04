@@ -21,16 +21,24 @@
 (define (dirname path)
   (apply build-path (drop-right (my-explode-path path) 1)))
 
-; path : string-path?
+; path : path-string?
 ; -> path?
 (define (encrypt-file path)
-  (let ([out-path (reroot-path path (find-system-path 'temp-dir))])
-    (make-directory* (dirname out-path))
-    (let ([out-path (make-temporary-file 
-                      (string-append (path->string out-path)
-                                     "_~a.enc"))])
-      (run-cmd (format "gpg -c -o ~a ~a" out-path path))
-      out-path)))
+ (let ([out-path (reroot-path path (find-system-path 'temp-dir))])
+  (make-directory* (dirname out-path))
+  (let ([out-path (path->string (make-temporary-file 
+                                 (string-append (path->string out-path)
+                                  "_~a.enc")))])
+   ; if a directory needs to be encrypted - first create a tarball 
+   (if (directory-exists? path)
+    (let ([tar-path (path->string (make-temporary-file))])
+     (run-cmd (format "tar -cf ~s ~s" tar-path path))
+     (run-cmd (format "gpg --batch --yes --symmetric --output ~s ~s"
+               out-path tar-path))
+     (delete-file tar-path))
+    (run-cmd (format "gpg --batch --yes --symmetric --output ~s ~s" 
+              out-path (path-string->string path))))
+   out-path)))
 
 (define (compress path)
  (run-cmd (string-join (list "gzip"
