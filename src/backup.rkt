@@ -11,7 +11,7 @@
 ; path:  (or path? string?) ; path to resultant backup file
 ; items: (listof BackupItem?) ; list of items to include
 (define (make-backup path items)
-  ;(displayln (format "make-backup ~a ~a" path (map BackupItem-desc items)))
+  (displayln (format "make-backup path=~a" path))
   ; 1. pack all files into an archive
   (for-each (lambda (item)
               ((get-backup-proc item) path))
