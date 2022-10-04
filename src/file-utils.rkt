@@ -96,15 +96,14 @@
 
 
 (define (archive-file arch-path file-path #:prefix [prefix #f])
-  (let ([options (string-join (list "tar -rP"
-                                    (if prefix
-                                      (format "--transform=~a"
-                                              (format "s|\\(.*\\)|~s\\1|"
-                                                      prefix))
-                                      "")))])
-    (run-cmd (string-append "tar" options "-f"
-                            (format "~a" (path-string->string arch-path))
-                            (format "~a" (path-string->string file-path))))))
+ (let ([options (string-join (list "-rP"
+                              (if prefix
+                               (format "--transform='~a'" 
+                                (format "s|\\(.*\\)|~a\\1|" prefix))
+                               "")))])
+  (run-cmd (string-join (list "tar" options "-f"
+                         (format "~a" (path-string->string arch-path))
+                         (format "~a" (path-string->string file-path)))))))
 
 (define (file-link? path)
   (memq (file-or-directory-type path) (list 'link 'directory-link)))
