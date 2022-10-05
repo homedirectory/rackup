@@ -24,21 +24,22 @@
 ; path : path-string?
 ; -> path?
 (define (encrypt-file path)
- (let ([out-path (reroot-path path (find-system-path 'temp-dir))])
-  (make-directory* (dirname out-path))
-  (let ([out-path (path->string (make-temporary-file 
-                                 (string-append (path->string out-path)
-                                  "_~a.enc")))])
-   ; if a directory needs to be encrypted - first create a tarball 
-   (if (directory-exists? path)
-    (let ([tar-path (path->string (make-temporary-file))])
-     (run-cmd (format "tar -cf ~s ~s" tar-path path))
-     (run-cmd (format "gpg --batch --yes --symmetric --output ~s ~s"
-               out-path tar-path))
-     (delete-file tar-path))
-    (run-cmd (format "gpg --batch --yes --symmetric --output ~s ~s" 
-              out-path (path-string->string path))))
-   out-path)))
+  (let ([out-path (reroot-path path (find-system-path 'temp-dir))])
+    (make-directory* (dirname out-path))
+    (let* ([out-path (make-temporary-file 
+                       (string-append (path->string out-path)
+                                      "_~a.enc"))]
+           [out-path-string (path-string->string out-path)])
+      ; if a directory needs to be encrypted - first create a tarball 
+      (if (directory-exists? path)
+        (let ([tar-path (path->string (make-temporary-file))])
+          (run-cmd (format "tar -cf ~s ~s" tar-path path))
+          (run-cmd (format "gpg --batch --yes --symmetric --output ~s ~s"
+                           out-path-string tar-path))
+          (delete-file tar-path))
+        (run-cmd (format "gpg --batch --yes --symmetric --output ~s ~s" 
+                         out-path-string (path-string->string path))))
+      out-path-string)))
 
 (define (compress path)
  (run-cmd (string-join (list "gzip"
@@ -106,6 +107,7 @@
 (define (archive-file arch-path file-path #:prefix [prefix #f])
  (let ([options (string-join (list "-rP"
                               (if prefix
+                                ;TODO BSD tar doesn't support --transform 
                                (format "--transform='~a'" 
                                 (format "s|\\(.*\\)|~a\\1|" prefix))
                                "")))])
