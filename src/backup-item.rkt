@@ -10,6 +10,8 @@
                  (get-backup-proc backupable))
 (define-generics validatable
                  (validate-backup-item validatable))
+(define-generics excludable
+                 (get-included excludable))
 
 ; for gen:custom-write
 (define (get-write-proc port mode)
@@ -75,6 +77,7 @@
         [encrypt? (BackupItemFile-encrypt? item)])
     (lambda (backup-path)
       (cond [encrypt? 
+              ; TODO collect all files to encrypt into a single archive
               (let ([enc-file-path (encrypt-file file-path)])
                 (archive-file backup-path enc-file-path)
                 (delete-file enc-file-path))]
@@ -103,21 +106,22 @@
 
 ; >>>>>>>>>> BackupItemDir >>>>>>>>>>
 
-; gen:backupable
-(define (BackupItemDir-get-backup-proc item)
+; gen:excludable
+(define (BackupItemDir-get-included item)
   (let ([file-path (BackupItemFile-file-path item)]
         [encrypt? (BackupItemFile-encrypt? item)]
         [follow? (BackupItemFile-follow? item)]
         [excluded (BackupItemDir-excluded item)])
-    (let ([included-items 
-            (map
-              (lambda (path)
-                (+BackupItemFile path encrypt? follow?))
-              (directory-list-except excluded file-path))])
-      (lambda (backup-path)
-        (for-each (lambda (item)
-                    ((get-backup-proc item) backup-path))
-                  included-items)))))
+    (map (lambda (path)
+           (+BackupItemFile path encrypt? follow?))
+         (directory-list-except excluded file-path))))
+
+; gen:backupable
+(define (BackupItemDir-get-backup-proc item)
+  (lambda (backup-path)
+    (for-each (lambda (item)
+                ((get-backup-proc item) backup-path))
+              (BackupItemDir-get-included item))))
 
 ; excluded : (listof string?)
 (struct BackupItemDir BackupItemFile (excluded)
@@ -131,7 +135,9 @@
               (BackupItemFile-follow? item) (BackupItemDir-excluded item))
       port))]
   #:methods gen:validatable
-  [(define validate-backup-item validate-BackupItemFile)])
+  [(define validate-backup-item validate-BackupItemFile)]
+  #:methods gen:excludable
+  [(define get-included BackupItemDir-get-included)])
 
 ; constructor
 (define (+BackupItemDir file-path [encrypt? #f] [follow? #t] [excluded (list)])
