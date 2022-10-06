@@ -113,7 +113,7 @@
   ; -> (listof BackupItem?)
   (define (args->backup-items args)
     (map (lambda (arg)
-           (cond [(string? arg) (+BackupItemFile arg)]
+           (cond [(string? arg) (SpecItem->BackupItem (+SpecItemFile arg))]
                  [(SpecItem? arg) (SpecItem->BackupItem arg)]
                  [else (error "Unexpected argument type:" arg)]))
          args))
@@ -138,7 +138,7 @@
             ;[(get-option 'simulate? options )
             ; (simulate-backup out-path backup-items)]
             ; main call
-            [else (make-backup out-path backup-items)]))
+            [else (void (make-backup out-path backup-items))]))
     )
   )
 

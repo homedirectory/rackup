@@ -12,27 +12,27 @@
 
 (struct SpecItem ())
 
-(struct SpecItemFile SpecItem (file-path encrypt? follow?)
+(struct SpecItemFile SpecItem (file-path-string encrypt? follow?)
   #:methods gen:BackupItem-convertable
   [(define (SpecItem->BackupItem spec-item)
-     (BackupItemFile (SpecItemFile-file-path spec-item)
+     (BackupItemFile (expand-user-path (SpecItemFile-file-path-string spec-item))
                      (SpecItemFile-encrypt? spec-item)
                      (SpecItemFile-follow? spec-item)))])
 
-(define (+SpecItemFile file-path #:encrypt? [encrypt? #f] #:follow? [follow? #t])
-  (SpecItemFile file-path encrypt? follow?))
+(define (+SpecItemFile file-path-string #:encrypt? [encrypt? #f] #:follow? [follow? #t])
+  (SpecItemFile file-path-string encrypt? follow?))
 
 (struct SpecItemDir SpecItemFile (excluded)
   #:methods gen:BackupItem-convertable
   [(define (SpecItem->BackupItem spec-item)
-     (BackupItemDir (SpecItemFile-file-path spec-item)
+     (BackupItemDir (expand-user-path (SpecItemFile-file-path-string spec-item))
                     (SpecItemFile-encrypt? spec-item)
                     (SpecItemFile-follow? spec-item)
                     (SpecItemDir-excluded spec-item)))])
 
-(define (+SpecItemDir file-path #:encrypt? [encrypt? #f] #:follow? [follow? #t]
+(define (+SpecItemDir file-path-string #:encrypt? [encrypt? #f] #:follow? [follow? #t]
                       #:excluded [excluded (list)])
-  (SpecItemDir file-path encrypt? follow? excluded))
+  (SpecItemDir file-path-string encrypt? follow? excluded))
 
 (struct SpecItemCmd SpecItem (file-name cmd)
   #:methods gen:BackupItem-convertable
