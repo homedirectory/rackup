@@ -49,6 +49,31 @@
 ;    (included-bak-files excluded dir-path)
 ;    (flatten (map arg->bak-file args))))
 
+; path : string?
+; excluded : (listof string?)
+; args : (or/c string? SpecItem? (listof SpecItem?))
+; -> (or/c SpecItemDir? (listof SpecItem?))
+(define (in-dir path #:encrypt? [encrypt? #f] #:excluded [excluded (list)] . args)
+  (if (!empty? excluded)
+    ; TODO handle args together with excluded
+    (+SpecItemDir path #:encrypt? encrypt? #:excluded excluded)
+    (map (lambda (arg)
+           (cond [(string? arg) (+SpecItemFile (build-path path arg) #:encrypt? encrypt?)]
+                 ; TODO replace two conds below with something smart
+                 [(SpecItemDir? arg) 
+                  (struct-copy SpecItemDir arg 
+                               [file-path-string #:parent SpecItemFile 
+                                                 (build-path path (SpecItemFile-file-path-string arg))]
+                               [encrypt? #:parent SpecItemFile (or (SpecItemFile-encrypt? arg)
+                                                                   encrypt?)])]
+                 [(SpecItemFile? arg) 
+                  (struct-copy SpecItemFile arg 
+                               [file-path-string 
+                                 (build-path path (SpecItemFile-file-path-string arg))]
+                               [encrypt? (or (SpecItemFile-encrypt? arg) encrypt?)])]
+                 [else (error "in-dir: Unexpected argument: ~a" arg)]))
+         (flatten args))))
+
 (alias-proc file +SpecItemFile)
 
 (alias-proc cmd +SpecItemCmd)
@@ -115,8 +140,8 @@
     (map (lambda (arg)
            (cond [(string? arg) (SpecItem->BackupItem (+SpecItemFile arg))]
                  [(SpecItem? arg) (SpecItem->BackupItem arg)]
-                 [else (error "Unexpected argument type:" arg)]))
-         args))
+                 [else (error "args->backup-items: Unexpected argument:" arg)]))
+         (flatten args)))
 
   (let* ([options (merge-options
                     (list (cons 'overwrite? overwrite?) 

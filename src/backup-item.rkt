@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require racket/generic racket/file racket/bool)
+(require racket/generic racket/file racket/bool racket/list)
 (require "helpers.rkt" "file-utils.rkt")
 (provide (all-defined-out))
 
@@ -12,6 +12,8 @@
                  (validate-backup-item validatable))
 (define-generics excludable
                  (get-included excludable))
+(define-generics describable
+                 (short-desc describable))
 
 ; for gen:custom-write
 (define (get-write-proc port mode)
@@ -49,6 +51,15 @@
             [else ((get-backup-proc (+BackupItemRegularFile file-path encrypt?))
                    backup-path)]))))
 
+; gen:describable
+(define (BackupItemFile-short-desc item)
+  (let ([file-path (BackupItemFile-file-path item)]
+        [follow? (BackupItemFile-follow? item)]
+        [encrypt? (BackupItemFile-encrypt? item)])
+    (format "~s~a~a" (path->string file-path)
+            (if encrypt? " ENCRYPT" "")
+            (if follow? "" " NOFOLLOW"))))
+
 (struct BackupItemFile BackupItem (file-path encrypt? follow?)
   #:methods gen:backupable
   [(define get-backup-proc BackupItemFile-get-backup-proc)]
@@ -59,6 +70,8 @@
               (BackupItemFile-file-path item) (BackupItemFile-encrypt? item) 
               (BackupItemFile-follow? item))
       port))]
+  #:methods gen:describable
+  [(define short-desc BackupItemFile-short-desc)]
   #:methods gen:validatable
   [(define validate-backup-item validate-BackupItemFile)])
 
@@ -83,6 +96,13 @@
                 (delete-file enc-file-path))]
             [else (archive-file backup-path file-path)]))))
 
+; gen:describable
+(define (BackupItemRegularFile-short-desc item)
+  (let ([file-path (BackupItemFile-file-path item)]
+        [encrypt? (BackupItemFile-encrypt? item)])
+    (format "~s~a" (path->string file-path)
+            (if encrypt? " ENCRYPT" ""))))
+
 ; regular file, i.e., not a link
 (struct BackupItemRegularFile BackupItemFile ()
   #:methods gen:backupable
@@ -93,6 +113,8 @@
       (format "(#BackupItemRegularFile file-path=~s encrypt?=~a)"
               (BackupItemFile-file-path item) (BackupItemFile-encrypt? item))
       port))]
+  #:methods gen:describable
+  [(define short-desc BackupItemRegularFile-short-desc)]
   #:methods gen:validatable
   [(define validate-backup-item validate-BackupItemFile)])
 
@@ -123,6 +145,17 @@
                 ((get-backup-proc item) backup-path))
               (BackupItemDir-get-included item))))
 
+; gen:describable
+(define (BackupItemDir-short-desc item)
+  (let ([file-path (BackupItemFile-file-path item)]
+        [follow? (BackupItemFile-follow? item)]
+        [encrypt? (BackupItemFile-encrypt? item)]
+        [excluded (BackupItemDir-excluded item)])
+    (format "~s~a~a~a" (path->string file-path)
+            (if encrypt? " ENCRYPT" "")
+            (if follow? "" " NOFOLLOW")
+            (if (empty? excluded) "" excluded))))
+
 ; excluded : (listof string?)
 (struct BackupItemDir BackupItemFile (excluded)
   #:methods gen:backupable
@@ -136,6 +169,8 @@
       port))]
   #:methods gen:validatable
   [(define validate-backup-item validate-BackupItemFile)]
+  #:methods gen:describable
+  [(define short-desc BackupItemDir-short-desc)]
   #:methods gen:excludable
   [(define get-included BackupItemDir-get-included)])
 
@@ -169,6 +204,12 @@
                    file-name)]
           [else #t])))
 
+; gen:describable
+(define (BackupItemCmd-short-desc item)
+  (let ([file-name (BackupItemCmd-file-name item)]
+        [cmd (BackupItemCmd-cmd item)])
+    (format "CMD ~s ~s" file-name cmd)))
+
 (struct BackupItemCmd BackupItem (file-name cmd)
   #:methods gen:backupable
   [(define get-backup-proc BackupItemCmd-get-backup-proc)]
@@ -178,6 +219,8 @@
       (format "(#BackupItemCmd file-name=~s cmd=~s)"
               (BackupItemCmd-file-name item) (BackupItemCmd-cmd item))
       port))]
+  #:methods gen:describable
+  [(define short-desc BackupItemCmd-short-desc)]
   #:methods gen:validatable
   [(define validate-backup-item validate-BackupItemCmd)])
 
