@@ -7,7 +7,9 @@
 
 ; -----------------------------------------------------------------------------
 
-(define (true? x) (not (false? x)))
+(define (true? x) (eq? #t x))
+
+(define (!true? x) (not (true? x)))
 
 (define (apply-if pred-val proc val)
   (if pred-val (proc val) val))
@@ -80,11 +82,6 @@
   val
   (proc val)))
 
-(define (displayln* . args)
- (unless (empty? args)
-  (displayln (car args))
-  (apply displayln* (cdr args))))
-
 ; Returns a differencec between lst1 and lst2.
 ; i.e. lst1 \ lst2
 (define (list-diff lst1 lst2)
@@ -98,7 +95,7 @@
 ; cmd : string?
 ; -> string?
 (define (run-cmd cmd)
-  (displayln (format "run-cmd ~s" cmd))
+  ;(displayln (format "run-cmd ~s" cmd))
   (with-output-to-string (lambda () (system cmd))))
 
 ; Runs a shell command cmd and writes stdout to a file at path.
@@ -129,3 +126,9 @@
 
 (define (maybe-string+suffix s suf)
  (if (string-suffix? s suf) s (string-append s suf)))
+
+(define (file/dir-exists? path)
+  (not (false? (file-or-directory-type path #;must-exist? #f))))
+
+(define (displayln* . lines)
+  (for-each displayln lines))
