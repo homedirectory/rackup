@@ -1,0 +1,7 @@
+*.vim
+test-bak/
+**/compiled/
+*~
+**/*.sw[pao]
+**/*_rash.rkt
+src.old/
