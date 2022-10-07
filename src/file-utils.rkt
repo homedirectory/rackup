@@ -42,9 +42,11 @@
       out-path-string)))
 
 (define (compress path)
- (run-cmd (string-join (list "gzip"
-                        "--best" 
-                        (path-string->string path)))))
+  (run-cmd (string-join (list "gzip"
+                              "--best" 
+                              "--suffix .gz"
+                              (path-string->string path))))
+  (path-add-extension path ".gz" "."))
 
 
 ; Recursively list all files at `path` excluding those in `except-list`.

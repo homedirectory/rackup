@@ -60,7 +60,7 @@
             (if encrypt? " ENCRYPT" "")
             (if follow? "" " NOFOLLOW"))))
 
-(struct BackupItemFile BackupItem (file-path encrypt? follow?)
+(struct BackupItemFile BackupItem (file-path [encrypt? #:mutable] follow?)
   #:methods gen:backupable
   [(define get-backup-proc BackupItemFile-get-backup-proc)]
   #:methods gen:custom-write
@@ -90,9 +90,8 @@
         [encrypt? (BackupItemFile-encrypt? item)])
     (lambda (backup-path)
       (cond [encrypt? 
-              ; TODO collect all files to encrypt into a single archive
               (let ([enc-file-path (encrypt-file file-path)])
-                (archive-file backup-path enc-file-path)
+                (archive-file backup-path enc-file-path #:prefix "encrypted")
                 (delete-file enc-file-path))]
             [else (archive-file backup-path file-path)]))))
 
