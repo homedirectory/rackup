@@ -14,6 +14,9 @@
                  (get-included excludable))
 (define-generics describable
                  (short-desc describable))
+(define-generics encryptable
+                 (to-encrypt? encryptable)
+                 (set-no-encrypt encryptable))
 
 ; for gen:custom-write
 (define (get-write-proc port mode)
@@ -73,7 +76,10 @@
   #:methods gen:describable
   [(define short-desc BackupItemFile-short-desc)]
   #:methods gen:validatable
-  [(define validate-backup-item validate-BackupItemFile)])
+  [(define validate-backup-item validate-BackupItemFile)]
+  #:methods gen:encryptable
+  [(define (to-encrypt? item) (BackupItemFile-encrypt? item))
+   (define (set-no-encrypt item) (set-BackupItemFile-encrypt?! item #f))])
 
 ; constructor
 (define (+BackupItemFile file-path [encrypt? #f] [follow? #t])
@@ -184,12 +190,18 @@
 
 ; gen:backupable
 (define (BackupItemCmd-get-backup-proc item)
-  (let ([file-name (BackupItemCmd-file-name item)]
-        [cmd (BackupItemCmd-cmd item)])
-    (let ([out-file-path (make-temporary-file (string-append file-name "_~a.out"))])
-      (run-cmd->file cmd out-file-path)
-      (lambda (backup-path)
-        (archive-file backup-path out-file-path #:prefix "stdout")
+  (lambda (backup-path)
+    (let ([file-name (BackupItemCmd-file-name item)]
+          [cmd (BackupItemCmd-cmd item)]
+          [encrypt? (BackupItemCmd-encrypt? item)])
+      (let ([out-file-path (make-temporary-file (string-append file-name "_~a.out"))])
+        (run-cmd->file cmd out-file-path)
+        (if encrypt?
+          (let ([enc-file-path (encrypt-file out-file-path)])
+            (archive-file backup-path enc-file-path #:prefix "stdout")
+            (delete-file enc-file-path))
+          ; else
+          (archive-file backup-path out-file-path #:prefix "stdout"))
         (delete-file out-file-path)))))
 
 ; gen:validatable
@@ -206,10 +218,11 @@
 ; gen:describable
 (define (BackupItemCmd-short-desc item)
   (let ([file-name (BackupItemCmd-file-name item)]
-        [cmd (BackupItemCmd-cmd item)])
-    (format "CMD ~s ~s" file-name cmd)))
+        [cmd (BackupItemCmd-cmd item)]
+        [encrypt? (BackupItemCmd-encrypt? item)])
+    (format "CMD ~a~s ~s" (if encrypt? "ENCRYPT " "") file-name cmd)))
 
-(struct BackupItemCmd BackupItem (file-name cmd)
+(struct BackupItemCmd BackupItem (file-name cmd [encrypt? #:mutable])
   #:methods gen:backupable
   [(define get-backup-proc BackupItemCmd-get-backup-proc)]
   #:methods gen:custom-write
@@ -221,10 +234,13 @@
   #:methods gen:describable
   [(define short-desc BackupItemCmd-short-desc)]
   #:methods gen:validatable
-  [(define validate-backup-item validate-BackupItemCmd)])
+  [(define validate-backup-item validate-BackupItemCmd)]
+  #:methods gen:encryptable
+  [(define (to-encrypt? item) (BackupItemCmd-encrypt? item))
+   (define (set-no-encrypt item) (set-BackupItemCmd-encrypt?! item #f))])
 
 ; constructor
-(define (+BackupItemCmd file-name cmd)
-  (BackupItemCmd file-name cmd))
+(define (+BackupItemCmd file-name cmd [encrypt? #f])
+  (BackupItemCmd file-name cmd encrypt?))
 
 ; <<<<<<<<<< BackupItemCmd <<<<<<<<<<

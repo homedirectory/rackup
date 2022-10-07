@@ -27,11 +27,11 @@
     ; 2. pack all items to encrypt into a single archive
     (let-values ([(to-encrypt rest)
                   (partition (lambda (item)
-                               (and (BackupItemFile? item) (BackupItemFile-encrypt? item)))
+                               (and (encryptable? item) (to-encrypt? item)))
                              valid-items)])
       (when (!empty? to-encrypt)
         ; disable the encrypt? flag on to-encrypt items
-        (for-each (lambda (item) (set-BackupItemFile-encrypt?! item #f)) to-encrypt)
+        (for-each set-no-encrypt to-encrypt)
 
         (when (not quiet?)
           (apply displayln* 

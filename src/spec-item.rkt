@@ -34,12 +34,13 @@
                       #:excluded [excluded (list)])
   (SpecItemDir file-path-string encrypt? follow? excluded))
 
-(struct SpecItemCmd SpecItem (file-name cmd)
+(struct SpecItemCmd SpecItem (file-name cmd encrypt?)
   #:methods gen:BackupItem-convertable
   [(define (SpecItem->BackupItem spec-item)
      (BackupItemCmd (SpecItemCmd-file-name spec-item)
-                    (SpecItemCmd-cmd spec-item)))])
+                    (SpecItemCmd-cmd spec-item)
+                    (SpecItemCmd-encrypt? spec-item)))])
 
-(define (+SpecItemCmd file-name cmd)
-  (SpecItemCmd file-name cmd))
+(define (+SpecItemCmd file-name cmd #:encrypt? [encrypt? #f])
+  (SpecItemCmd file-name cmd encrypt?))
 

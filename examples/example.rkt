@@ -12,4 +12,5 @@
   (file "/etc/X11/xinit" #:encrypt? #t) ; encrypted directory 
   (cmd "msg.txt" 
        "echo \"Hi, this is $(id -un)@$(hostname)\"")
+  (cmd "secret.txt" "uname -a" #:encrypt? #t)
   )
