@@ -79,6 +79,7 @@
 (alias-proc cmd +SpecItemCmd)
 
 ; >>>>>>>>>> COMMAND-LINE ARGUMENTS >>>>>>>>>>
+; TODO add --ask
 (define (options-from-cmdline)
   (define simulate? (make-parameter #f))
   (define output (make-parameter #f))
@@ -134,6 +135,8 @@
                 #:append-date? [append-date? #f] 
                 ;#:date-format [date-format "%Y-%mm-%dd_%HH%MM%Ss"]
                 . args)
+  ; TODO parse options first, then perform computation
+  ; e.g. all procedure calls should be delayed until options are parsed
 
   ; -> (listof BackupItem?)
   (define (args->backup-items args)

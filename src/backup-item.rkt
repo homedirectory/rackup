@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require racket/generic racket/file racket/bool racket/list)
+(require racket/trace)
 (require "helpers.rkt" "file-utils.rkt")
 (provide (all-defined-out))
 
@@ -8,6 +9,7 @@
 
 (define-generics backupable
                  (get-backup-proc backupable))
+;(trace get-backup-proc)
 (define-generics validatable
                  (validate-backup-item validatable))
 (define-generics excludable
