@@ -12,17 +12,16 @@ Run your backup script with `--help` to see the list of available options. You c
 (require rackup)
 
 (backup "/tmp/example.bak"
-  ; --- files ---
-  "/etc/hosts" ; shorthand
-  (file "/etc/hostname")
-  (file "/etc/vimrc" #:encrypt? #t) ; encrypted file 
-  (file "/etc/X11/xinit" #:encrypt? #t) ; encrypted directory 
-  (in-dir "~/" #:excluded (list "Downloads" "Desktop"))
-  ; stores stdout of given shell command in a file named "msg.txt"
-  (cmd "msg.txt" "echo \"Hi, this is $(id -un)@$(hostname)\"")
-  ; can encrypt stdout
-  (cmd "secret.txt" "uname -a" #:encrypt? #t)
-  )
+  (files
+      "/etc/hosts" ; shorthand
+      (file "/etc/hostname")
+      (file "/etc/vimrc" #:encrypt? #t) ; encrypted file 
+      (file "/etc/X11/xinit" #:encrypt? #t) ; encrypted directory 
+      (in-dir "~/" #:excluded (list "Downloads" "Desktop"))
+      ; stores stdout of given shell command in a file named "msg.txt"
+      (cmd "msg.txt" "echo \"Hi, this is $(id -un)@$(hostname)\"")
+      ; can encrypt stdout
+      (cmd "secret.txt" "uname -a" #:encrypt? #t)))
 ```
 
 The resulting backup will have the following structure inside:
