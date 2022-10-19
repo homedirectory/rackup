@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require racket/cmdline racket/promise racket/list racket/file)
+(require (for-syntax racket/base))
+(require racket/cmdline racket/promise racket/list racket/file racket/stream)
 (require "helpers.rkt" "backup-item.rkt" "macros.rkt" "backup-item-utils.rkt"
          "spec-item.rkt" "backup.rkt")
 
@@ -125,18 +126,19 @@
                   opts2)))
 ; <<<<<<<<<< LAUNCH OPTIONS <<<<<<<<<<
 
+(define-syntax (files stx)
+  (datum->syntax stx (cons #'stream (cdr (syntax->datum stx)))))
+
 ; The main function to be called by the user. 
 ; Options specified on the command line take priority over the ones defined in the file.
 ;
 ; path: string?
-; args: (listof bak-file? string?)
+; args: (streamof bak-file? string?) ; obtained from (files ...) macro
 (define (backup path 
                 #:overwrite? [overwrite? #f]
                 #:append-date? [append-date? #f] 
                 ;#:date-format [date-format "%Y-%mm-%dd_%HH%MM%Ss"]
-                . args)
-  ; TODO parse options first, then perform computation
-  ; e.g. all procedure calls should be delayed until options are parsed
+                args)
 
   ; -> (listof BackupItem?)
   (define (args->backup-items args)
@@ -159,7 +161,7 @@
     (when (and (get-option 'overwrite? options) (not (empty? args)))
       (delete-directory/files out-path #:must-exist? #f))
 
-    (let ([backup-items (args->backup-items args)])
+    (let ([backup-items (args->backup-items (stream->list args))])
       ; handle some options
       (cond [(get-option 'print-files? options )
              (print-included backup-items)]
